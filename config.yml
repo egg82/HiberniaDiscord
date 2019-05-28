@@ -1,0 +1,28 @@
+# HiberniaDiscord Configuration file.
+
+# [ DO NOT EDIT ]
+
+config-version: 1
+
+
+
+
+# [ Discord Settings ]
+
+# Place your webhook here. It should be in the form /webhooks/{webhook.id}/{webhook.token}
+# See https://discordapp.com/developers/docs/resources/webhook for more information.
+# Please see https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks to learn how to create a webhook.
+
+webhook_url: ''
+
+# [ Avatar API ]
+# Only change this if you know what you're doing
+# The plugin will replace the section between URL and options with the user's ID
+
+
+# [Defaults]:
+# crafatar_url: 'https://crafatar.com/renders/head/'
+# crafatar_options: 'size=10&overlay'
+
+crafatar_url: 'https://crafatar.com/renders/head/'
+crafatar_options: 'size=10&overlay'

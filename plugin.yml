@@ -1,0 +1,6 @@
+version: 1.0
+name: HiberniaDiscord
+main: co.paradaux.HiberniaDiscord.Main
+author: Paradaux
+api-version: 1.14
+description: Discord Integration for HiberniaMC by Paradaux
