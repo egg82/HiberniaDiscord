@@ -1,4 +1,4 @@
-package me.egg82.tfaplus.hooks;
+package co.paradaux.hdiscord.hooks;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.OfflinePlayer;

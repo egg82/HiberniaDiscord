@@ -1,7 +1,9 @@
-package me.egg82.tfaplus.events;
+package co.paradaux.hdiscord.events;
 
-import me.egg82.tfaplus.extended.Configuration;
-import me.egg82.tfaplus.utils.LogUtil;
+import co.paradaux.hdiscord.core.Configuration;
+import co.paradaux.hdiscord.utils.LogUtil;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
 import ninja.egg82.updater.SpigotUpdater;
@@ -12,9 +14,6 @@ import org.bukkit.plugin.Plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-
 public class PlayerLoginUpdateNotifyHandler implements Consumer<PlayerLoginEvent> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -23,7 +22,7 @@ public class PlayerLoginUpdateNotifyHandler implements Consumer<PlayerLoginEvent
     public PlayerLoginUpdateNotifyHandler(Plugin plugin) { this.plugin = plugin; }
 
     public void accept(PlayerLoginEvent event) {
-        if (!event.getPlayer().hasPermission("2faplus.admin")) {
+        if (!event.getPlayer().hasPermission("hdiscord.admin")) {
             return;
         }
 

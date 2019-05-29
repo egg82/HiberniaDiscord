@@ -1,4 +1,4 @@
-package me.egg82.tfaplus.hooks;
+package co.paradaux.hdiscord.hooks;
 
 public interface PluginHook {
     void cancel();

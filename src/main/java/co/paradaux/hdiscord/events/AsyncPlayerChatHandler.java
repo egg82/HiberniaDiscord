@@ -1,30 +1,74 @@
 package co.paradaux.hdiscord.events;
 
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
+import co.paradaux.hdiscord.core.CachedConfigValues;
+import co.paradaux.hdiscord.hooks.PlaceholderAPIHook;
+import java.util.Optional;
+import java.util.function.Consumer;
+import net.dv8tion.jda.webhook.WebhookClient;
+import net.dv8tion.jda.webhook.WebhookMessageBuilder;
+import ninja.egg82.service.ServiceLocator;
+import ninja.egg82.service.ServiceNotFoundException;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import co.paradaux.hdiscord.WorkerThread;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class MessageEvent implements Listener {
-    private String webhookURL;
-    private String crafatarURL;
-    private String crafatarOptions;
+public class AsyncPlayerChatHandler implements Consumer<AsyncPlayerChatEvent> {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    public MessageEvent(String webhookURL, String crafatarURL, String crafatarOptions) {
-        this.webhookURL = webhookURL;
-        this.crafatarURL = crafatarURL;
-        this.crafatarOptions = crafatarOptions;
-    }
+    public AsyncPlayerChatHandler() {}
 
-    @EventHandler
-    public void onMessageEvent(AsyncPlayerChatEvent e) {
-        Player p = e.getPlayer();
-        String headURL = p.getUniqueId().toString();
-        String userName = p.getDisplayName();
-        String message = e.getMessage();
-        Runnable r = new WorkerThread(headURL, userName, message, webhookURL, crafatarURL, crafatarOptions);
-        new Thread(r).start();
+    public void accept(AsyncPlayerChatEvent event) {
+        Optional<PlaceholderAPIHook> placeholderapi;
+        Optional<WebhookClient> discordClient;
+        try {
+            placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
+            discordClient = ServiceLocator.getOptional(WebhookClient.class);
+        } catch (InstantiationException | IllegalAccessException ex) {
+            logger.error(ex.getMessage(), ex);
+            placeholderapi = Optional.empty();
+            discordClient = Optional.empty();
+        }
+
+        if (!discordClient.isPresent()) {
+            return;
+        }
+
+        CachedConfigValues cachedConfig;
+
+        try {
+            cachedConfig = ServiceLocator.get(CachedConfigValues.class);
+        } catch (InstantiationException | IllegalAccessException | ServiceNotFoundException ex) {
+            logger.error(ex.getMessage(), ex);
+            return;
+        }
+
+        WebhookMessageBuilder messageBuilder = new WebhookMessageBuilder();
+        messageBuilder.setAvatarUrl(cachedConfig.getAvatarURL() + event.getPlayer().getUniqueId() + cachedConfig.getAvatarOptions());
+        messageBuilder.setUsername(event.getPlayer().getDisplayName());
+
+        if (placeholderapi.isPresent()) {
+            messageBuilder.setContent(placeholderapi.get().withPlaceholders(event.getPlayer(), event.getMessage()));
+        } else {
+            messageBuilder.setContent(event.getMessage());
+        }
+
+        if (cachedConfig.getDebug()) {
+            if (!event.getPlayer().getName().equals(event.getPlayer().getDisplayName())) {
+                logger.info("Sending message from " + event.getPlayer().getName() + " (" + event.getPlayer().getDisplayName() + ")..");
+            } else {
+                logger.info("Sending message from " + event.getPlayer().getName() + "..");
+            }
+        }
+
+        discordClient.get().send(messageBuilder.build()).thenRun(() -> {
+            if (cachedConfig.getDebug()) {
+                if (!event.getPlayer().getName().equals(event.getPlayer().getDisplayName())) {
+                    logger.info("Successfully sent message from " + event.getPlayer().getName() + " (" + event.getPlayer().getDisplayName() + ")");
+                } else {
+                    logger.info("Successfully sent message from " + event.getPlayer().getName());
+                }
+            }
+        });
     }
 }
