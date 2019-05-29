@@ -36,6 +36,7 @@ X.0 - is a complete rewrite or finalisation of the plugin.
 ## Authors
 
 * **Rían Errity** - *Initial concept and development - [ParadauxDev](https://paradaux.co)
+* **egg82** - *Guidence, Programming and expertise. - [Website](https://egg82.ninja)
 
 All those who contribute in any form will be acknowledged.
 
