@@ -15,8 +15,11 @@ import co.paradaux.hdiscord.utils.ServiceUtil;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.SetMultimap;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import ninja.egg82.events.BukkitEventSubscriber;
 import ninja.egg82.events.BukkitEvents;
@@ -36,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 public class Main extends JavaPlugin {
     private final Logger logger = LoggerFactory.getLogger(getClass());
+
+    private ExecutorService workPool = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("HiberniaDiscord-%d").build());
 
     private TaskChainFactory taskFactory;
     private PaperCommandManager commandManager;
@@ -60,7 +65,7 @@ public class Main extends JavaPlugin {
                         + ChatColor.YELLOW + "[" + ChatColor.WHITE + events.size() + ChatColor.BLUE + " Events" + ChatColor.YELLOW +  "]"
         );
 
-        checkUpdate();
+        workPool.submit(this::checkUpdate);
     }
 
     public void onDisable() {
@@ -136,17 +141,23 @@ public class Main extends JavaPlugin {
                 return;
             }
 
-            if (config.getNode("update", "notify").getBoolean(true)) {
-                try {
-                    getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.AQUA + " has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get());
-                } catch (ExecutionException ex) {
-                    logger.error(ex.getMessage(), ex);
-                } catch (InterruptedException ex) {
-                    logger.error(ex.getMessage(), ex);
-                    Thread.currentThread().interrupt();
-                }
+            try {
+                getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.AQUA + " has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get());
+            } catch (ExecutionException ex) {
+                logger.error(ex.getMessage(), ex);
+            } catch (InterruptedException ex) {
+                logger.error(ex.getMessage(), ex);
+                Thread.currentThread().interrupt();
             }
         });
+
+        try {
+            Thread.sleep(60L * 60L * 1000L);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
+
+        workPool.submit(this::checkUpdate);
     }
 
     private void unloadHooks() {
@@ -158,5 +169,17 @@ public class Main extends JavaPlugin {
 
     private void unloadServices() {
         ServiceUtil.unregisterDiscord();
+
+        if (!workPool.isShutdown()) {
+            workPool.shutdown();
+            try {
+                if (!workPool.awaitTermination(8L, TimeUnit.SECONDS)) {
+                    workPool.shutdownNow();
+                }
+            } catch (InterruptedException ignored) {
+                workPool.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }
