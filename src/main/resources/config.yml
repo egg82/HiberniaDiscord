@@ -1,0 +1,26 @@
+# Discord settings
+discord:
+  # Discord webhook URL
+  # To create a webhook, see https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+  # See https://discordapp.com/developers/docs/resources/webhook for more information.
+  webhook-url: ''
+
+# Avatar API, for changing the Discord avatar per player
+# See https://crafatar.com for details
+avatar:
+  # craftar.com URL
+  url: 'https://crafatar.com/renders/head/'
+  # Craftar modifiers/options
+  options: 'size=10&overlay'
+
+# When true, logs some extra output to the console so you can see if/why things might be failing
+debug: false
+
+update:
+  # Whether or not to automatically check for updates and notify the console if found
+  check: true
+  # Whether or not to notify players with the hdiscord.admin permission node
+  notify: true
+
+# Config version, no touchy plz
+version: 2.0
