@@ -1,28 +1,26 @@
-# HiberniaDiscord Configuration file.
+# Discord settings
+discord:
+  # Discord webhook URL
+  # To create a webhook, see https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+  # See https://discordapp.com/developers/docs/resources/webhook for more information.
+  webhook-url: ''
 
-# [ DO NOT EDIT ]
+# Avatar API, for changing the Discord avatar per player
+# See https://crafatar.com for details
+avatar:
+  # craftar.com URL
+  url: 'https://crafatar.com/renders/head/'
+  # Craftar modifiers/options
+  options: 'size=10&overlay'
 
-config-version: 1
+# When true, logs some extra output to the console so you can see if/why things might be failing
+debug: false
 
+update:
+  # Whether or not to automatically check for updates and notify the console if found
+  check: true
+  # Whether or not to notify players with the hdiscord.admin permission node
+  notify: true
 
-
-
-# [ Discord Settings ]
-
-# Place your webhook here. It should be in the form /webhooks/{webhook.id}/{webhook.token}
-# See https://discordapp.com/developers/docs/resources/webhook for more information.
-# Please see https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks to learn how to create a webhook.
-
-webhook_url: ''
-
-# [ Avatar API ]
-# Only change this if you know what you're doing
-# The plugin will replace the section between URL and options with the user's ID
-
-
-# [Defaults]:
-# crafatar_url: 'https://crafatar.com/renders/head/'
-# crafatar_options: 'size=10&overlay'
-
-crafatar_url: 'https://crafatar.com/renders/head/'
-crafatar_options: 'size=10&overlay'
+# Config version, no touchy plz
+version: 2.0
