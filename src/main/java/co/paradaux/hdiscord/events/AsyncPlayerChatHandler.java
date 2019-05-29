@@ -8,6 +8,7 @@ import net.dv8tion.jda.webhook.WebhookClient;
 import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
+import org.bukkit.ChatColor;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import org.slf4j.Logger;
@@ -43,9 +44,11 @@ public class AsyncPlayerChatHandler implements Consumer<AsyncPlayerChatEvent> {
             return;
         }
 
+        String strippedDisplayName = ChatColor.stripColor(event.getPlayer().getDisplayName());
+
         WebhookMessageBuilder messageBuilder = new WebhookMessageBuilder();
         messageBuilder.setAvatarUrl(cachedConfig.getAvatarURL() + event.getPlayer().getUniqueId() + cachedConfig.getAvatarOptions());
-        messageBuilder.setUsername(event.getPlayer().getDisplayName());
+        messageBuilder.setUsername(strippedDisplayName);
 
         if (placeholderapi.isPresent()) {
             messageBuilder.setContent(placeholderapi.get().withPlaceholders(event.getPlayer(), event.getMessage()));
@@ -54,8 +57,8 @@ public class AsyncPlayerChatHandler implements Consumer<AsyncPlayerChatEvent> {
         }
 
         if (cachedConfig.getDebug()) {
-            if (!event.getPlayer().getName().equals(event.getPlayer().getDisplayName())) {
-                logger.info("Sending message from " + event.getPlayer().getName() + " (" + event.getPlayer().getDisplayName() + ")..");
+            if (!event.getPlayer().getName().equals(strippedDisplayName)) {
+                logger.info("Sending message from " + event.getPlayer().getName() + " (" + strippedDisplayName + ")..");
             } else {
                 logger.info("Sending message from " + event.getPlayer().getName() + "..");
             }
@@ -63,8 +66,8 @@ public class AsyncPlayerChatHandler implements Consumer<AsyncPlayerChatEvent> {
 
         discordClient.get().send(messageBuilder.build()).thenRun(() -> {
             if (cachedConfig.getDebug()) {
-                if (!event.getPlayer().getName().equals(event.getPlayer().getDisplayName())) {
-                    logger.info("Successfully sent message from " + event.getPlayer().getName() + " (" + event.getPlayer().getDisplayName() + ")");
+                if (!event.getPlayer().getName().equals(strippedDisplayName)) {
+                    logger.info("Successfully sent message from " + event.getPlayer().getName() + " (" + strippedDisplayName + ")");
                 } else {
                     logger.info("Successfully sent message from " + event.getPlayer().getName());
                 }
