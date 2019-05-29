@@ -169,17 +169,5 @@ public class Main extends JavaPlugin {
 
     private void unloadServices() {
         ServiceUtil.unregisterDiscord();
-
-        if (!workPool.isShutdown()) {
-            workPool.shutdown();
-            try {
-                if (!workPool.awaitTermination(8L, TimeUnit.SECONDS)) {
-                    workPool.shutdownNow();
-                }
-            } catch (InterruptedException ignored) {
-                workPool.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
     }
 }
