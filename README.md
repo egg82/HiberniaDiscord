@@ -1,6 +1,6 @@
 # HiberniaDiscord v2.0.0: Rewrite.
 
-Development Branch. Please see Master branch for currently functioning releases.
+Currently preparing for v2.0.1 which adds Join/leave messages as well as fixing some small bugs.
 
 ## Installation
 
@@ -18,7 +18,7 @@ As of the time of writing this there are no current external libraries used.
 Learn more about creating webhooks  [Here](https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhook)
 ## Deployment
 
-Currently, we are using no build tools or dependency management. This is set to change in the near future as we endorse Maven.
+We're currently shipping w/ Maven. Feel free to build the source yourself, should you know how. (Cannot Guarentee what's here is ready to be built. Master branch should be fine.)
 
 ## Contributing
 
