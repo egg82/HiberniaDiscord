@@ -1,6 +1,6 @@
 version: 2.0.0
 name: hdiscord
-main: co.paradaux.hdiscord.Main
+main: co.paradaux.hdiscord.BukkitBootstrap
 author: Paradaux
 api-version: 1.14
 description: Discord Integration for HiberniaMC
