@@ -1,11 +1,11 @@
 package co.paradaux.hdiscord.events;
 
+import club.minnced.discord.webhook.WebhookClient;
+import club.minnced.discord.webhook.send.WebhookMessageBuilder;
 import co.paradaux.hdiscord.core.CachedConfigValues;
 import co.paradaux.hdiscord.hooks.PlaceholderAPIHook;
 import java.util.Optional;
 import java.util.function.Consumer;
-import net.dv8tion.jda.webhook.WebhookClient;
-import net.dv8tion.jda.webhook.WebhookMessageBuilder;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
 import org.bukkit.ChatColor;

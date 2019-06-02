@@ -86,8 +86,8 @@
             <url>https://repo.spongepowered.org/maven/</url>
         </repository>
         <repository>
-            <id>jda</id>
-            <url>http://jcenter.bintray.com</url>
+            <id>bintray-jcenter</id>
+            <url>https://jcenter.bintray.com</url>
         </repository>
         <repository>
             <id>github-rjenkinsjr</id>
@@ -118,43 +118,56 @@
             <groupId>ninja.egg82</groupId>
             <artifactId>service-locator</artifactId>
             <version>1.0.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>co.aikar</groupId>
             <artifactId>taskchain-bukkit</artifactId>
             <version>3.7.2</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>co.aikar</groupId>
             <artifactId>acf-paper</artifactId>
             <version>0.5.0-SNAPSHOT</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ninja.egg82</groupId>
             <artifactId>event-chain-bukkit</artifactId>
             <version>1.0.9</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ninja.egg82</groupId>
             <artifactId>spigot-updater</artifactId>
             <version>1.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>ninja.egg82</groupId>
+            <artifactId>dep-downloader</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.spongepowered</groupId>
             <artifactId>configurate-core</artifactId>
             <version>3.6</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.spongepowered</groupId>
             <artifactId>configurate-yaml</artifactId>
             <version>3.6</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ninja.egg82</groupId>
             <artifactId>abstract-configuration</artifactId>
             <version>1.0.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -176,15 +189,10 @@
         </dependency>
 
         <dependency>
-            <groupId>net.dv8tion</groupId>
-            <artifactId>JDA</artifactId>
-            <version>3.8.3_463</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>club.minnced</groupId>
-                    <artifactId>opus-java</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>club.minnced</groupId>
+            <artifactId>discord-webhooks</artifactId>
+            <version>0.1.7</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>

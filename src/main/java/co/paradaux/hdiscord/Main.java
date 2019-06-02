@@ -26,18 +26,19 @@ import ninja.egg82.events.BukkitEvents;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
 import ninja.egg82.updater.SpigotUpdater;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import co.paradaux.hdiscord.events.AsyncPlayerChatHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Main extends JavaPlugin {
+public class Main {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private ExecutorService workPool = Executors.newFixedThreadPool(1, new ThreadFactoryBuilder().setNameFormat("HiberniaDiscord-%d").build());
@@ -47,9 +48,21 @@ public class Main extends JavaPlugin {
 
     private List<BukkitEventSubscriber<?>> events = new ArrayList<>();
 
+    private final Plugin plugin;
+    private final boolean isBukkit;
+
+    public Main(Plugin plugin) {
+        isBukkit = Bukkit.getName().equals("Bukkit") || Bukkit.getName().equals("CraftBukkit");
+        this.plugin = plugin;
+    }
+
+    public void onLoad() {
+
+    }
+
     public void onEnable() {
-        taskFactory = BukkitTaskChainFactory.create(this);
-        commandManager = new PaperCommandManager(this);
+        taskFactory = BukkitTaskChainFactory.create(plugin);
+        commandManager = new PaperCommandManager(plugin);
         commandManager.enableUnstableAPI("help");
 
         loadServices();
@@ -57,10 +70,10 @@ public class Main extends JavaPlugin {
         loadEvents();
         loadHooks();
 
-        getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabled");
+        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabled");
 
-        getServer().getConsoleSender().sendMessage(LogUtil.getHeading()
-                        + ChatColor.YELLOW + "[" + ChatColor.AQUA + "Version " + ChatColor.WHITE + getDescription().getVersion() + ChatColor.YELLOW +  "] "
+        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading()
+                        + ChatColor.YELLOW + "[" + ChatColor.AQUA + "Version " + ChatColor.WHITE + plugin.getDescription().getVersion() + ChatColor.YELLOW +  "] "
                         + ChatColor.YELLOW + "[" + ChatColor.WHITE + commandManager.getRegisteredRootCommands().size() + ChatColor.GOLD + " Commands" + ChatColor.YELLOW +  "] "
                         + ChatColor.YELLOW + "[" + ChatColor.WHITE + events.size() + ChatColor.BLUE + " Events" + ChatColor.YELLOW +  "]"
         );
@@ -80,13 +93,13 @@ public class Main extends JavaPlugin {
         unloadHooks();
         unloadServices();
 
-        getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.DARK_RED + "Disabled");
+        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.DARK_RED + "Disabled");
     }
 
     private void loadServices() {
-        ConfigurationFileUtil.reloadConfig(this);
+        ConfigurationFileUtil.reloadConfig(plugin);
         ServiceUtil.registerDiscord();
-        ServiceLocator.register(new SpigotUpdater(this, 67795));
+        ServiceLocator.register(new SpigotUpdater(plugin, 67795));
     }
 
     private void loadCommands() {
@@ -102,22 +115,22 @@ public class Main extends JavaPlugin {
             return ImmutableList.copyOf(commands);
         });
 
-        commandManager.registerCommand(new DiscordCommand(this, taskFactory));
+        commandManager.registerCommand(new DiscordCommand(plugin, taskFactory));
     }
 
     private void loadEvents() {
-        events.add(BukkitEvents.subscribe(this, AsyncPlayerChatEvent.class, EventPriority.LOWEST).handler(e -> new AsyncPlayerChatHandler().accept(e)));
-        events.add(BukkitEvents.subscribe(this, PlayerLoginEvent.class, EventPriority.LOW).handler(e -> new PlayerLoginUpdateNotifyHandler(this).accept(e)));
+        events.add(BukkitEvents.subscribe(plugin, AsyncPlayerChatEvent.class, EventPriority.LOWEST).handler(e -> new AsyncPlayerChatHandler().accept(e)));
+        events.add(BukkitEvents.subscribe(plugin, PlayerLoginEvent.class, EventPriority.LOW).handler(e -> new PlayerLoginUpdateNotifyHandler(plugin).accept(e)));
     }
 
     private void loadHooks() {
-        PluginManager manager = getServer().getPluginManager();
+        PluginManager manager = plugin.getServer().getPluginManager();
 
         if (manager.getPlugin("PlaceholderAPI") != null) {
-            getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabling support for PlaceholderAPI.");
+            plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabling support for PlaceholderAPI.");
             ServiceLocator.register(new PlaceholderAPIHook());
         } else {
-            getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.YELLOW + "PlaceholderAPI was not found. Skipping support for placeholders.");
+            plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.YELLOW + "PlaceholderAPI was not found. Skipping support for placeholders.");
         }
     }
 
@@ -142,7 +155,7 @@ public class Main extends JavaPlugin {
             }
 
             try {
-                getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.AQUA + " has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get());
+                plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.AQUA + " has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get());
             } catch (ExecutionException ex) {
                 logger.error(ex.getMessage(), ex);
             } catch (InterruptedException ex) {
