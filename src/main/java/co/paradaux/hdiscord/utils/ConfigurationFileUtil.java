@@ -51,8 +51,8 @@ public class ConfigurationFileUtil {
         // v2.1 Specific Strings
 
         String serverIcon = config.getNode("avatar", "server-icon").getString("https://paradaux.co/hiberniadiscord/default_servericon.png");
-        String joinEventMsg = config.getNode("events", "join").getString("Server » %player% has joined the game.");
-        String leaveEventMsg = config.getNode("events", "leave").getString("Server  » %player% has left the game.");
+        String joinEventMsg = config.getNode("events", "player-join").getString("");
+        String leaveEventMsg = config.getNode("events", "player-leave").getString("");
 
 
 
