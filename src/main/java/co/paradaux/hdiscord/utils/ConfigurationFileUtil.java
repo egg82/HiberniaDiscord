@@ -48,6 +48,14 @@ public class ConfigurationFileUtil {
             avatarOptions = "?" + avatarOptions;
         }
 
+        // v2.1 Specific Strings
+
+        String serverIcon = config.getNode("avatar", "server-icon").getString("https://paradaux.co/hiberniadiscord/default_servericon.png");
+        String joinEventMsg = config.getNode("events", "player-join").getString("");
+        String leaveEventMsg = config.getNode("events", "player-leave").getString("");
+
+
+
         if (debug) {
             logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Avatar URL: " + ChatColor.WHITE + avatarURL);
             logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Avatar options: " + ChatColor.WHITE + avatarOptions);
@@ -57,6 +65,9 @@ public class ConfigurationFileUtil {
                 .debug(debug)
                 .avatarURL(avatarURL)
                 .avatarOptions(avatarOptions)
+                .serverIcon(serverIcon)
+                .joinEventMsg(joinEventMsg)
+                .leaveEventMsg(leaveEventMsg)
                 .build();
 
         ServiceLocator.register(config);

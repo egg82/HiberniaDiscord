@@ -6,7 +6,9 @@ import co.aikar.taskchain.BukkitTaskChainFactory;
 import co.aikar.taskchain.TaskChainFactory;
 import co.paradaux.hdiscord.commands.DiscordCommand;
 import co.paradaux.hdiscord.core.Configuration;
+import co.paradaux.hdiscord.events.PlayerJoinEventHandler;
 import co.paradaux.hdiscord.events.PlayerLoginUpdateNotifyHandler;
+import co.paradaux.hdiscord.events.PlayerQuitEventHandler;
 import co.paradaux.hdiscord.hooks.PlaceholderAPIHook;
 import co.paradaux.hdiscord.hooks.PluginHook;
 import co.paradaux.hdiscord.utils.ConfigurationFileUtil;
@@ -30,7 +32,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 
@@ -121,6 +125,8 @@ public class Main {
     private void loadEvents() {
         events.add(BukkitEvents.subscribe(plugin, AsyncPlayerChatEvent.class, EventPriority.LOWEST).handler(e -> new AsyncPlayerChatHandler().accept(e)));
         events.add(BukkitEvents.subscribe(plugin, PlayerLoginEvent.class, EventPriority.LOW).handler(e -> new PlayerLoginUpdateNotifyHandler(plugin).accept(e)));
+        events.add(BukkitEvents.subscribe(plugin, PlayerJoinEvent.class, EventPriority.LOW).handler(e -> new PlayerJoinEventHandler().accept(e)));
+        events.add(BukkitEvents.subscribe(plugin, PlayerQuitEvent.class, EventPriority.LOW).handler(e -> new PlayerQuitEventHandler().accept(e)));
     }
 
     private void loadHooks() {
