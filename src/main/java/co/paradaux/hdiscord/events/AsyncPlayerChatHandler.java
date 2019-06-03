@@ -22,25 +22,30 @@ public class AsyncPlayerChatHandler implements Consumer<AsyncPlayerChatEvent> {
     public void accept(AsyncPlayerChatEvent event) {
         Optional<PlaceholderAPIHook> placeholderapi;
         Optional<WebhookClient> discordClient;
-        try {
-            placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
-            discordClient = ServiceLocator.getOptional(WebhookClient.class);
-        } catch (InstantiationException | IllegalAccessException ex) {
-            logger.error(ex.getMessage(), ex);
-            placeholderapi = Optional.empty();
-            discordClient = Optional.empty();
-        }
-
-        if (!discordClient.isPresent()) {
-            return;
-        }
-
         CachedConfigValues cachedConfig;
 
         try {
             cachedConfig = ServiceLocator.get(CachedConfigValues.class);
         } catch (InstantiationException | IllegalAccessException | ServiceNotFoundException ex) {
             logger.error(ex.getMessage(), ex);
+            return;
+        }
+
+        try {
+            placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
+        } catch(InstantiationException | IllegalAccessException ex) {
+            logger.error(ex.getMessage(), ex);
+            placeholderapi = Optional.empty();
+        }
+
+        try {
+            discordClient = ServiceLocator.getOptional(WebhookClient.class);
+        } catch(InstantiationException | IllegalAccessException ex) {
+            logger.error(ex.getMessage(), ex);
+            discordClient = Optional.empty();
+        }
+
+        if (!discordClient.isPresent()) {
             return;
         }
 

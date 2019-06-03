@@ -20,20 +20,6 @@ public class PlayerQuitEventHandler implements Consumer<PlayerQuitEvent> {
     public void accept(PlayerQuitEvent event) {
         Optional<PlaceholderAPIHook> placeholderapi;
         Optional<WebhookClient> discordClient;
-
-        try {
-            placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
-            discordClient = ServiceLocator.getOptional(WebhookClient.class);
-        } catch (InstantiationException | IllegalAccessException ex) {
-            logger.error(ex.getMessage(), ex);
-            placeholderapi = Optional.empty();
-            discordClient = Optional.empty();
-        }
-
-        if (!discordClient.isPresent()) {
-            return;
-        }
-
         CachedConfigValues cachedConfig;
 
         try {
@@ -44,6 +30,24 @@ public class PlayerQuitEventHandler implements Consumer<PlayerQuitEvent> {
         }
 
         if(cachedConfig.getLeaveEventMsg() == "") { return; }
+
+        try {
+            placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
+        } catch(InstantiationException | IllegalAccessException ex) {
+            logger.error(ex.getMessage(), ex);
+            placeholderapi = Optional.empty();
+        }
+
+        try {
+            discordClient = ServiceLocator.getOptional(WebhookClient.class);
+        } catch(InstantiationException | IllegalAccessException ex) {
+            logger.error(ex.getMessage(), ex);
+            discordClient = Optional.empty();
+        }
+
+        if (!discordClient.isPresent()) {
+            return;
+        }
 
         String strippedDisplayName =  ChatColor.stripColor(cachedConfig.getLeaveEventMsg().replace("%player%", event.getPlayer().getDisplayName()));
 
