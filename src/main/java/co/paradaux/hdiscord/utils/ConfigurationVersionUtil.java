@@ -15,9 +15,9 @@ public class ConfigurationVersionUtil {
         if (config.getNode("version").getDouble(1.0d) == 1.0d) {
             to20(config);
         }
-        /*if (config.getNode("version").getDouble() == 2.0d) {
+        if (config.getNode("version").getDouble() == 2.0d) {
             to21(config);
-        }*/
+        }
 
         if (config.getNode("version").getDouble() != oldVersion) {
             File backupFile = new File(fileOnDisk.getParent(), fileOnDisk.getName() + ".bak");
@@ -54,5 +54,19 @@ public class ConfigurationVersionUtil {
 
         // Version
         config.getNode("version").setValue(2.0d);
+    }
+
+    public static void to21(ConfigurationNode config) {
+
+        // Server Icon under avatar
+        config.getNode("avatar", "server-icon").setValue("https://paradaux.co/hiberniadiscord/default_servericon.png");
+
+        // Events Section
+        config.getNode("events", "join").setValue("Server » %player% has joined the game.");
+        config.getNode("events", "leave").setValue("Server » %player% has left the game.");
+
+
+        config.getNode("version").setValue(2.1d);
+
     }
 }

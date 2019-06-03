@@ -13,8 +13,20 @@ avatar:
   # Craftar modifiers/options
   options: 'size=10&overlay'
 
+  # Avatar used for non-chat messages and warnings.
+  server-icon: 'https://paradaux.co/hiberniadiscord/default_servericon.png'
+
 # When true, logs some extra output to the console so you can see if/why things might be failing
 debug: false
+
+# The following section toggles individual message updates when said events occur.
+events:
+
+  # We strongly suggest updating server-icon under the avatar section as this will be the avatar used for these events.
+  # If these sections are blank they will be considered disabled. %player% is the only valid placeholder without PlaceholderAPI
+  player-join: 'Server Event » %player% has joined the game.'
+  player-leave: 'Server Event » %player% has left the game.'
+
 
 update:
   # Whether or not to automatically check for updates and notify the console if found
@@ -23,4 +35,4 @@ update:
   notify: true
 
 # Config version, no touchy plz
-version: 2.0
+version: 2.1
