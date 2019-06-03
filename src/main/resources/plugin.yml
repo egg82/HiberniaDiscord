@@ -1,5 +1,5 @@
 version: 2.1.0
-name: hdiscord
+name: HiberniaDiscord
 main: co.paradaux.hdiscord.BukkitBootstrap
 author: Paradaux
 api-version: 1.13

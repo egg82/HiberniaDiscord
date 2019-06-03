@@ -46,14 +46,14 @@ public class PlayerJoinEventHandler implements Consumer<PlayerJoinEvent> {
         if(cachedConfig.getJoinEventMsg() == "") { return; }
 
         String strippedDisplayName =  ChatColor.stripColor(cachedConfig.getJoinEventMsg().replace("%player%", event.getPlayer().getDisplayName()));
-        String stipppedPlacehoolderAPIName = ChatColor.stripColor(placeholderapi.get().withPlaceholders(event.getPlayer(), cachedConfig.getJoinEventMsg()));
 
         WebhookMessageBuilder messageBuilder = new WebhookMessageBuilder();
         messageBuilder.setAvatarUrl(cachedConfig.getServerIcon());
         messageBuilder.setContent("\u200B");
 
         if (placeholderapi.isPresent()) {
-            messageBuilder.setUsername(stipppedPlacehoolderAPIName);
+            String stipppedPlaceholderAPIName = ChatColor.stripColor(placeholderapi.get().withPlaceholders(event.getPlayer(), cachedConfig.getJoinEventMsg().replace("%player%", "%player_displayname%")));
+            messageBuilder.setUsername(stipppedPlaceholderAPIName);
         } else {
             messageBuilder.setUsername(strippedDisplayName);
         }
