@@ -24,6 +24,25 @@ We're currently shipping w/ Maven. Feel free to build the source yourself, shoul
 
 Feel free to create a fork and submit a pull request, I'll get to it when I can (Which shouldn't be too long, I have nothing better to do with my time.)
 
+If you'd like to create an addon for HiberniaDiscord feel free to do so. I have made a public repository for v2.1.0 upwards. 
+```xml
+<repository>
+	<id>paradaux-repo</id>
+	<url>https://dev.hiberniamc.com/repository/paradaux/</url>
+</repository>
+```
+
+```xml
+<dependency>
+	<groupId>co.paradux</groupId>
+	<artifactId>HiberniaDiscord</artifactId>
+	<version>2.1.0</version>
+	<scope>provided</scope>
+</dependency>
+```
+
+
+
 ## Versioning
 
 We're following a very weak versioning system whereby
