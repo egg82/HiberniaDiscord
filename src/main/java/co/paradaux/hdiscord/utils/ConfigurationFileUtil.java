@@ -48,17 +48,16 @@ public class ConfigurationFileUtil {
             avatarOptions = "?" + avatarOptions;
         }
 
-        // v2.1 Specific Strings
-
         String serverIcon = config.getNode("avatar", "server-icon").getString("https://paradaux.co/hiberniadiscord/default_servericon.png");
         String joinEventMsg = config.getNode("events", "player-join").getString("");
         String leaveEventMsg = config.getNode("events", "player-leave").getString("");
 
-
-
         if (debug) {
             logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Avatar URL: " + ChatColor.WHITE + avatarURL);
             logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Avatar options: " + ChatColor.WHITE + avatarOptions);
+            logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Avatar server icon: " + ChatColor.WHITE + serverIcon);
+            logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Join message: " + ChatColor.WHITE + joinEventMsg);
+            logger.info(LogUtil.getHeading() + ChatColor.YELLOW + "Leave message: " + ChatColor.WHITE + leaveEventMsg);
         }
 
         CachedConfigValues cachedValues = CachedConfigValues.builder()
@@ -69,6 +68,8 @@ public class ConfigurationFileUtil {
                 .joinEventMsg(joinEventMsg)
                 .leaveEventMsg(leaveEventMsg)
                 .build();
+
+        ConfigUtil.setConfiguration(config, cachedValues);
 
         ServiceLocator.register(config);
         ServiceLocator.register(cachedValues);

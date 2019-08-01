@@ -4,6 +4,7 @@ import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import co.paradaux.hdiscord.core.Configuration;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.net.MalformedURLException;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,7 +22,7 @@ public class ServiceUtil {
 
     private ServiceUtil() {}
 
-    public static void registerDiscord() {
+    public static void registerDiscord() throws MalformedURLException {
         Configuration config;
         try {
             config = ServiceLocator.get(Configuration.class);
@@ -34,8 +35,7 @@ public class ServiceUtil {
         Matcher matcher = WEBHOOK_PATTERN.matcher(webhookURL);
 
         if (!matcher.matches()) {
-            logger.error(LogUtil.getHeading() + ChatColor.RED + "A valid Discord webhook URL was not found in the config. Please add one and then reload the plugin.");
-            return;
+            throw new MalformedURLException();
         }
 
         ServiceLocator.register(

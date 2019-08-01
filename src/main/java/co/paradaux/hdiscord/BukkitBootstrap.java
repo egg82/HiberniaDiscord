@@ -1,5 +1,6 @@
 package co.paradaux.hdiscord;
 
+import co.paradaux.hdiscord.utils.BukkitEnvironmentUtil;
 import co.paradaux.hdiscord.utils.LogUtil;
 import java.io.File;
 import java.io.IOException;
@@ -7,13 +8,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import javax.xml.xpath.XPathExpressionException;
 import ninja.egg82.maven.Artifact;
 import ninja.egg82.maven.Scope;
 import ninja.egg82.services.ProxiedURLClassLoader;
-import ninja.egg82.utils.DownloadUtil;
 import ninja.egg82.utils.InjectUtil;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -30,10 +33,11 @@ public class BukkitBootstrap extends JavaPlugin {
     private final boolean isBukkit;
 
     private URLClassLoader proxiedClassLoader;
+    private final ExecutorService downloadPool = Executors.newWorkStealingPool(Math.max(4, Runtime.getRuntime().availableProcessors()));
 
     public BukkitBootstrap() {
         super();
-        isBukkit = Bukkit.getName().equals("Bukkit") || Bukkit.getName().equals("CraftBukkit");
+        isBukkit = BukkitEnvironmentUtil.getEnvironment() == BukkitEnvironmentUtil.Environment.BUKKIT;
     }
 
     @Override
@@ -42,9 +46,20 @@ public class BukkitBootstrap extends JavaPlugin {
 
         try {
             loadJars(new File(getDataFolder(), "external"), proxiedClassLoader);
-        } catch (ClassCastException | URISyntaxException | IOException | SAXException | IllegalAccessException | InvocationTargetException ex) {
+        } catch (ClassCastException | IOException | IllegalAccessException | InvocationTargetException ex) {
             logger.error(ex.getMessage(), ex);
             throw new RuntimeException("Could not load required deps.");
+        }
+
+        downloadPool.shutdown();
+        try {
+            if (!downloadPool.awaitTermination(1L, TimeUnit.HOURS)) {
+                logger.error("Could not download all dependencies. Please try again later.");
+                return;
+            }
+        } catch (InterruptedException ex) {
+            logger.error(ex.getMessage(), ex);
+            Thread.currentThread().interrupt();
         }
 
         try {
@@ -77,167 +92,120 @@ public class BukkitBootstrap extends JavaPlugin {
         }
     }
 
-    private void loadJars(File jarsFolder, URLClassLoader classLoader) throws URISyntaxException, IOException, SAXException, IllegalAccessException, InvocationTargetException {
-        if (jarsFolder.exists() && !jarsFolder.isDirectory()) {
-            Files.delete(jarsFolder.toPath());
+    private void loadJars(File jarsDir, URLClassLoader classLoader) throws IOException, IllegalAccessException, InvocationTargetException {
+        if (jarsDir.exists() && !jarsDir.isDirectory()) {
+            Files.delete(jarsDir.toPath());
         }
-        if (!jarsFolder.exists()) {
-            if (!jarsFolder.mkdirs()) {
+        if (!jarsDir.exists()) {
+            if (!jarsDir.mkdirs()) {
                 throw new IOException("Could not create parent directory structure.");
             }
         }
 
+        File cacheDir = new File(jarsDir, "cache");
+
         InjectUtil.injectFile(getFile(), classLoader);
 
-        Artifact serviceLocator = Artifact.builder("ninja.egg82", "service-locator", "1.0.1")
+        // First
+
+        Artifact.Builder guava = Artifact.builder("com.google.guava", "guava", "28.0-jre", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInjectWait(guava, jarsDir, classLoader, "Google Guava", 1);
+
+        // Same file
+
+        InjectUtil.injectFile(getFile(), classLoader);
+
+        // Local
+
+        Artifact.Builder taskchainBukkit = Artifact.builder("co.aikar", "taskchain-bukkit", "3.7.2", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/aikar/")
+                .addRepository("https://repo.aikar.co/nexus/content/groups/aikar/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(taskchainBukkit, jarsDir, classLoader, "Taskchain", 1);
+
+        printLatest("ACF");
+        Artifact.Builder acfPaper = Artifact.builder("co.aikar", "acf-paper", "0.5.0-SNAPSHOT", cacheDir)
+                .addDirectJarURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{SNAPSHOT}-shaded.jar")
+                .addDirectJarURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{SNAPSHOT}-shaded.jar")
+                .addRepository("https://nexus.egg82.me/repository/aikar/")
+                .addRepository("https://repo.aikar.co/nexus/content/groups/aikar/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(acfPaper, jarsDir, classLoader, "ACF");
+
+        Artifact.Builder eventChainBukkit = Artifact.builder("ninja.egg82", "event-chain-bukkit", "1.0.9", cacheDir)
                 .addRepository("https://nexus.egg82.me/repository/egg82/")
                 .addRepository("https://www.myget.org/F/egg82-java/maven/")
-                .addRepository("https://nexus.egg82.me/repository/maven-central/")
-                .build();
-        loadDep(serviceLocator, jarsFolder, classLoader, "Service Locator");
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(eventChainBukkit, jarsDir, classLoader, "Event Chain");
 
-        /*JarDep.Builder serviceLocator = JarDep.builder(jarsFolder, "ninja.egg82", "service-locator", "1.0.1")
-                .addURL("https://nexus.egg82.me/repository/egg82/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://www.myget.org/F/egg82-java/maven/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar");
-        loadDep(serviceLocator, classLoader, "Service Locator");
+        Artifact.Builder configurateYaml = Artifact.builder("org.spongepowered", "configurate-yaml", "3.6.1", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/sponge/")
+                .addRepository("https://repo.spongepowered.org/maven/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(configurateYaml, jarsDir, classLoader, "Configurate", 2);
 
-        JarDep.Builder acfPaper = JarDep.builder(jarsFolder, "co.aikar", "acf-paper", "0.5.0")
-                .addURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213856-143-shaded.jar")
-                .addURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213856-143-shaded.jar");
-        loadDep(acfPaper, classLoader, "ACF Paper");*/
+        Artifact.Builder spigotUpdater = Artifact.builder("ninja.egg82", "spigot-updater", "1.0.1", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/egg82/")
+                .addRepository("https://www.myget.org/F/egg82-java/maven/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(spigotUpdater, jarsDir, classLoader, "Spigot Updater");
 
-        /*JarDep acfCore = JarDep.builder(jarsFolder, "co.aikar", "acf-core", "0.5.0")
-                .addURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213847-143-shaded.jar")
-                .addURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213847-143-shaded.jar")
-                .build();
-        loadJar(acfCore, jarsFolder, classLoader, "ACF Core");
+        Artifact.Builder serviceLocator = Artifact.builder("ninja.egg82", "service-locator", "1.0.1", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/egg82/")
+                .addRepository("https://www.myget.org/F/egg82-java/maven/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(serviceLocator, jarsDir, classLoader, "Service Locator");
 
-        JarDep acfPaper = JarDep.builder(jarsFolder, "co.aikar", "acf-paper", "0.5.0")
-                .addURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213856-143-shaded.jar")
-                .addURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}-SNAPSHOT/{ARTIFACT}-{VERSION}-20190401.213856-143-shaded.jar")
-                .build();
-        loadJar(acfPaper, jarsFolder, classLoader, "ACF Paper");
+        Artifact.Builder abstractConfiguration = Artifact.builder("ninja.egg82", "abstract-configuration", "1.0.1", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/egg82/")
+                .addRepository("https://www.myget.org/F/egg82-java/maven/")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(abstractConfiguration, jarsDir, classLoader, "Abstract Configuration");
 
-        JarDep taskchainCore = JarDep.builder("co.aikar", "taskchain-core", "3.7.2")
-                .addURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(taskchainCore, jarsFolder, classLoader, "Taskchain Core");
-
-        JarDep taskchainBukkit = JarDep.builder(jarsFolder, "co.aikar", "taskchain-bukkit", "3.7.2")
-                .addURL("https://nexus.egg82.me/repository/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://repo.aikar.co/nexus/content/groups/aikar/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(taskchainBukkit, jarsFolder, classLoader, "Taskchain Bukkit");
-
-        JarDep eventchainBukkit = JarDep.builder(jarsFolder, "ninja.egg82", "event-chain-bukkit", "1.0.9")
-                .addURL("https://nexus.egg82.me/repository/egg82/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://www.myget.org/F/egg82-java/maven/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(eventchainBukkit, jarsFolder, classLoader, "Event Chain Bukkit");
-
-        JarDep spigotUpdater = JarDep.builder(jarsFolder, "ninja.egg82", "spigot-updater", "1.0.1")
-                .addURL("https://nexus.egg82.me/repository/egg82/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://www.myget.org/F/egg82-java/maven/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(spigotUpdater, jarsFolder, classLoader, "Spigot Updater");
-
-        JarDep configurateCore = JarDep.builder(jarsFolder, "org.spongepowered", "configurate-core", "3.6")
-                .addURL("https://nexus.egg82.me/repository/sponge/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://repo.spongepowered.org/maven/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(configurateCore, jarsFolder, classLoader, "Configurate Core");
-
-        JarDep configurateYAML = JarDep.builder(jarsFolder, "org.spongepowered", "configurate-yaml", "3.6")
-                .addURL("https://nexus.egg82.me/repository/sponge/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://repo.spongepowered.org/maven/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(configurateYAML, jarsFolder, classLoader, "Configurate YAML");
-
-        JarDep abstractCofiguration = JarDep.builder(jarsFolder, "ninja.egg82", "abstract-configuration", "1.0.1")
-                .addURL("https://nexus.egg82.me/repository/egg82/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://www.myget.org/F/egg82-java/maven/ninja.egg82/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(abstractCofiguration, jarsFolder, classLoader, "Abstract Configuration");
-
-        JarDep webhooks = JarDep.builder(jarsFolder, "club.minnced", "discord-webhooks", "0.1.7")
-                .addURL("https://nexus.egg82.me/repository/bintray-jcenter/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("https://jcenter.bintray.com/{GROUP}/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(webhooks, jarsFolder, classLoader, "Discord Webhooks");*/
-
-        //loadPom(webhooks.getPomDep(), jarsFolder, classLoader);
-
-        /*
-        // Webooks deps
-
-        JarDep okhttp = JarDep.builder("okhttp", "3.12.0")
-                .addURL("https://nexus.egg82.me/repository/maven-central/com/squareup/okhttp3/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/com/squareup/okhttp3/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(okhttp, jarsFolder, classLoader, "Okhttp");
-
-        JarDep json = JarDep.builder("json", "20180813")
-                .addURL("https://nexus.egg82.me/repository/maven-central/org/json/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/org/json/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(json, jarsFolder, classLoader, "JSON");
-
-        JarDep jetbrainsAnnotations = JarDep.builder("annotations", "16.0.1")
-                .addURL("https://nexus.egg82.me/repository/maven-central/org/jetbrains/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/org/jetbrains/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(jetbrainsAnnotations, jarsFolder, classLoader, "Jetbrains Annotations");
-
-        // Okhttp deps
-
-        JarDep okio = JarDep.builder("okio", "2.2.2")
-                .addURL("https://nexus.egg82.me/repository/maven-central/com/squareup/okio/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/com/squareup/okio/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(okio, jarsFolder, classLoader, "Okio");
-
-        // Okio deps
-
-        JarDep kotlinStd = JarDep.builder("kotlin-stdlib", "1.2.60")
-                .addURL("https://nexus.egg82.me/repository/maven-central/org/jetbrains/kotlin/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/org/jetbrains/kotlin/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(kotlinStd, jarsFolder, classLoader, "Kotlin Standard Lib");
-
-        // Kotlin standard lib deps
-
-        JarDep kotlinCommon = JarDep.builder("kotlin-stdlib-common", "1.2.60")
-                .addURL("https://nexus.egg82.me/repository/maven-central/org/jetbrains/kotlin/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .addURL("http://central.maven.org/maven2/org/jetbrains/kotlin/{ARTIFACT}/{VERSION}/{ARTIFACT}-{VERSION}.jar")
-                .build();
-        loadJar(kotlinCommon, jarsFolder, classLoader, "Kotlin Common");
-        */
+        Artifact.Builder discordWebhooks = Artifact.builder("club.minnced", "discord-webhooks", "0.1.7", cacheDir)
+                .addRepository("https://nexus.egg82.me/repository/bintray-jcenter/")
+                .addRepository("https://jcenter.bintray.com")
+                .addRepository("https://nexus.egg82.me/repository/maven-central/");
+        buildInject(discordWebhooks, jarsDir, classLoader, "Discord Webhooks", 4);
     }
 
-    private void loadDep(Artifact artifact, File jarsFolder, URLClassLoader classLoader, String friendlyName) throws IOException, IllegalAccessException, InvocationTargetException {
-        File output = new File(jarsFolder, artifact.getGroupId() + "-" + artifact.getArtifactId() + "-" + artifact.getVersion() + ".jar");
-        if (!DownloadUtil.hasFile(output)) {
+    private void printLatest(String friendlyName) {
+        log(Level.INFO, LogUtil.getHeading() + ChatColor.YELLOW + "Checking version of " + ChatColor.WHITE + friendlyName);
+    }
+
+    private void buildInject(Artifact.Builder builder, File jarsDir, URLClassLoader classLoader, String friendlyName) {
+        buildInject(builder, jarsDir, classLoader, friendlyName, 0);
+    }
+
+    private void buildInject(Artifact.Builder builder, File jarsDir, URLClassLoader classLoader, String friendlyName, int depth) {
+        downloadPool.submit(() -> buildInjectWait(builder, jarsDir, classLoader, friendlyName, depth));
+    }
+
+    private void buildInjectWait(Artifact.Builder builder, File jarsDir, URLClassLoader classLoader, String friendlyName, int depth) {
+        try {
+            injectArtifact(builder.build(), jarsDir, classLoader, friendlyName, depth);
+        } catch (IOException | IllegalAccessException | InvocationTargetException | URISyntaxException | XPathExpressionException | SAXException ex) {
+            logger.error(ex.getMessage(), ex);
+        }
+    }
+
+    private void injectArtifact(Artifact artifact, File jarsDir, URLClassLoader classLoader, String friendlyName, int depth) throws IOException, IllegalAccessException, InvocationTargetException, URISyntaxException, XPathExpressionException, SAXException {
+        File output = new File(jarsDir, artifact.getGroupId()
+                + "-" + artifact.getArtifactId()
+                + "-" + artifact.getRealVersion() + ".jar"
+        );
+
+        if (friendlyName != null && !artifact.fileExists(output)) {
             log(Level.INFO, LogUtil.getHeading() + ChatColor.YELLOW + "Downloading " + ChatColor.WHITE + friendlyName);
         }
-        loadDepQuiet(artifact, jarsFolder, classLoader);
-    }
+        artifact.injectJar(output, classLoader);
 
-    private void loadDepQuiet(Artifact artifact, File jarsFolder, URLClassLoader classLoader) throws IOException, IllegalAccessException, InvocationTargetException {
-        File output = new File(jarsFolder, artifact.getGroupId() + "-" + artifact.getArtifactId() + "-" + artifact.getVersion() + ".jar");
-        if (DownloadUtil.hasFile(output)) {
-            logger.info(artifact.getGroupId() + ":" + artifact.getArtifactId() + "::" + artifact.getVersion() + " exists, not downloading.");
-            return;
-        }
-
-        logger.info("Downloading & injecting " + artifact.getGroupId() + ":" + artifact.getArtifactId() + "::" + artifact.getVersion());
-
-        artifact.downloadJar(output);
-        InjectUtil.injectFile(output, classLoader);
-
-        for (Artifact dep : artifact.getDependencies()) {
-            if (dep.getScope() == Scope.COMPILE || dep.getScope() == Scope.RUNTIME) {
-                loadDepQuiet(dep, jarsFolder, classLoader);
+        if (depth > 0) {
+            for (Artifact dependency : artifact.getDependencies()) {
+                if (dependency.getScope() == Scope.COMPILE || dependency.getScope() == Scope.RUNTIME) {
+                    injectArtifact(dependency, jarsDir, classLoader, null, depth - 1);
+                }
             }
         }
     }

@@ -4,8 +4,8 @@ import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.send.WebhookMessageBuilder;
 import co.paradaux.hdiscord.core.CachedConfigValues;
 import co.paradaux.hdiscord.hooks.PlaceholderAPIHook;
+import co.paradaux.hdiscord.utils.ConfigUtil;
 import ninja.egg82.service.ServiceLocator;
-import ninja.egg82.service.ServiceNotFoundException;
 import org.bukkit.ChatColor;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.slf4j.Logger;
@@ -20,16 +20,13 @@ public class PlayerQuitEventHandler implements Consumer<PlayerQuitEvent> {
     public void accept(PlayerQuitEvent event) {
         Optional<PlaceholderAPIHook> placeholderapi;
         Optional<WebhookClient> discordClient;
-        CachedConfigValues cachedConfig;
 
-        try {
-            cachedConfig = ServiceLocator.get(CachedConfigValues.class);
-        } catch (InstantiationException | IllegalAccessException | ServiceNotFoundException ex) {
-            logger.error(ex.getMessage(), ex);
+        Optional<CachedConfigValues> cachedConfig = ConfigUtil.getCachedConfig();
+        if (!cachedConfig.isPresent()) {
             return;
         }
 
-        if(cachedConfig.getLeaveEventMsg() == "") { return; }
+        if(cachedConfig.get().getLeaveEventMsg().isEmpty()) { return; }
 
         try {
             placeholderapi = ServiceLocator.getOptional(PlaceholderAPIHook.class);
@@ -49,20 +46,20 @@ public class PlayerQuitEventHandler implements Consumer<PlayerQuitEvent> {
             return;
         }
 
-        String strippedDisplayName =  ChatColor.stripColor(cachedConfig.getLeaveEventMsg().replace("%player%", event.getPlayer().getDisplayName()));
+        String strippedDisplayName =  ChatColor.stripColor(cachedConfig.get().getLeaveEventMsg().replace("%player%", event.getPlayer().getDisplayName()));
 
         WebhookMessageBuilder messageBuilder = new WebhookMessageBuilder();
-        messageBuilder.setAvatarUrl(cachedConfig.getServerIcon());
+        messageBuilder.setAvatarUrl(cachedConfig.get().getServerIcon());
         messageBuilder.setContent("\u200B");
 
         if (placeholderapi.isPresent()) {
-            String stipppedPlaceholderAPIName = ChatColor.stripColor(placeholderapi.get().withPlaceholders(event.getPlayer(), cachedConfig.getLeaveEventMsg().replace("%player%", "%player_displayname%")));
+            String stipppedPlaceholderAPIName = ChatColor.stripColor(placeholderapi.get().withPlaceholders(event.getPlayer(), cachedConfig.get().getLeaveEventMsg().replace("%player%", "%player_displayname%")));
             messageBuilder.setUsername(stipppedPlaceholderAPIName);
         } else {
             messageBuilder.setUsername(strippedDisplayName);
         }
 
-        if (cachedConfig.getDebug()) {
+        if (cachedConfig.get().getDebug()) {
             if (!event.getPlayer().getName().equals(strippedDisplayName)) {
                 logger.info("Sending message from " + event.getPlayer().getName() + " (" + strippedDisplayName + ")..");
             } else {
@@ -71,7 +68,7 @@ public class PlayerQuitEventHandler implements Consumer<PlayerQuitEvent> {
         }
 
         discordClient.get().send(messageBuilder.build()).thenRun(() -> {
-            if (cachedConfig.getDebug()) {
+            if (cachedConfig.get().getDebug()) {
                 if (!event.getPlayer().getName().equals(strippedDisplayName)) {
                     logger.info("Successfully sent message from " + event.getPlayer().getName() + " (" + strippedDisplayName + ")");
                 } else {

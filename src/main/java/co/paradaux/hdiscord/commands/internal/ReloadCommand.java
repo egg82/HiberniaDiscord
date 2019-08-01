@@ -1,32 +1,41 @@
 package co.paradaux.hdiscord.commands.internal;
 
+import co.aikar.commands.CommandIssuer;
 import co.aikar.taskchain.TaskChain;
+import co.paradaux.hdiscord.enums.Message;
 import co.paradaux.hdiscord.utils.ConfigurationFileUtil;
-import co.paradaux.hdiscord.utils.LogUtil;
 import co.paradaux.hdiscord.utils.ServiceUtil;
-import org.bukkit.ChatColor;
-import org.bukkit.command.CommandSender;
+import java.net.MalformedURLException;
 import org.bukkit.plugin.Plugin;
 
 public class ReloadCommand implements Runnable {
     private final Plugin plugin;
     private final TaskChain<?> chain;
-    private final CommandSender sender;
+    private final CommandIssuer issuer;
 
-    public ReloadCommand(Plugin plugin, TaskChain<?> chain, CommandSender sender) {
+    public ReloadCommand(Plugin plugin, TaskChain<?> chain, CommandIssuer issuer) {
         this.plugin = plugin;
         this.chain = chain;
-        this.sender = sender;
+        this.issuer = issuer;
     }
 
     public void run() {
-        sender.sendMessage(LogUtil.getHeading() + ChatColor.YELLOW + "Reloading, please wait..");
+        issuer.sendInfo(Message.RELOAD__BEGIN);
 
         chain
                 .async(ServiceUtil::unregisterDiscord)
                 .async(() -> ConfigurationFileUtil.reloadConfig(plugin))
-                .async(ServiceUtil::registerDiscord)
-                .sync(() -> sender.sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Configuration reloaded!"))
+                .<Boolean>asyncCallback((v, f) -> {
+                    try {
+                        ServiceUtil.registerDiscord();
+                        f.accept(true);
+                    } catch (MalformedURLException ex) {
+                        issuer.sendInfo(Message.ERROR__WEBHOOK_INVALID);
+                    }
+                    f.accept(false);
+                })
+                .abortIf(v -> !v)
+                .sync(() -> issuer.sendInfo(Message.RELOAD__END))
                 .execute();
     }
 }

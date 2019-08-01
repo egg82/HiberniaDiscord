@@ -1,14 +1,16 @@
 package co.paradaux.hdiscord.events;
 
+import co.aikar.commands.CommandManager;
 import co.paradaux.hdiscord.core.Configuration;
-import co.paradaux.hdiscord.utils.LogUtil;
+import co.paradaux.hdiscord.enums.Message;
+import co.paradaux.hdiscord.utils.ConfigUtil;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
 import ninja.egg82.updater.SpigotUpdater;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.plugin.Plugin;
 import org.slf4j.Logger;
@@ -18,26 +20,33 @@ public class PlayerLoginUpdateNotifyHandler implements Consumer<PlayerLoginEvent
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final Plugin plugin;
+    private final CommandManager commandManager;
 
-    public PlayerLoginUpdateNotifyHandler(Plugin plugin) { this.plugin = plugin; }
+    public PlayerLoginUpdateNotifyHandler(Plugin plugin, CommandManager commandManager) {
+        this.plugin = plugin;
+        this.commandManager = commandManager;
+    }
 
     public void accept(PlayerLoginEvent event) {
         if (!event.getPlayer().hasPermission("hdiscord.admin")) {
             return;
         }
 
-        Configuration config;
+        Optional<Configuration> config = ConfigUtil.getConfig();
+        if (!config.isPresent()) {
+            return;
+        }
+
         SpigotUpdater updater;
 
         try {
-            config = ServiceLocator.get(Configuration.class);
             updater = ServiceLocator.get(SpigotUpdater.class);
         } catch (InstantiationException | IllegalAccessException | ServiceNotFoundException ex) {
             logger.error(ex.getMessage(), ex);
             return;
         }
 
-        if (!config.getNode("update", "check").getBoolean(true)) {
+        if (!config.get().getNode("update", "check").getBoolean(true)) {
             return;
         }
 
@@ -46,10 +55,10 @@ public class PlayerLoginUpdateNotifyHandler implements Consumer<PlayerLoginEvent
                 return;
             }
 
-            if (config.getNode("update", "notify").getBoolean(true)) {
+            if (config.get().getNode("update", "notify").getBoolean(true)) {
                 try {
-                    String message = LogUtil.getHeading() + ChatColor.AQUA + " (Bukkit) has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get();
-                    Bukkit.getScheduler().runTask(plugin, () -> event.getPlayer().sendMessage(message));
+                    String version = updater.getLatestVersion().get();
+                    Bukkit.getScheduler().runTask(plugin, () -> commandManager.getCommandIssuer(event.getPlayer()).sendInfo(Message.GENERAL__UPDATE, "{version}", version));
                 } catch (ExecutionException ex) {
                     logger.error(ex.getMessage(), ex);
                 } catch (InterruptedException ex) {

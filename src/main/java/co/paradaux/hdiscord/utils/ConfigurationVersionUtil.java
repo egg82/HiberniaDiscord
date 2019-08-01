@@ -57,7 +57,6 @@ public class ConfigurationVersionUtil {
     }
 
     public static void to21(ConfigurationNode config) {
-
         // Server Icon under avatar
         config.getNode("avatar", "server-icon").setValue("https://paradaux.co/hiberniadiscord/default_servericon.png");
 
@@ -65,8 +64,7 @@ public class ConfigurationVersionUtil {
         config.getNode("events", "join").setValue("Server » %player% has joined the game.");
         config.getNode("events", "leave").setValue("Server » %player% has left the game.");
 
-
+        // Version
         config.getNode("version").setValue(2.1d);
-
     }
 }

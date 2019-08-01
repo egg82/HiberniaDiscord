@@ -1,35 +1,38 @@
 package co.paradaux.hdiscord;
 
-import co.aikar.commands.PaperCommandManager;
-import co.aikar.commands.RegisteredCommand;
+import co.aikar.commands.*;
 import co.aikar.taskchain.BukkitTaskChainFactory;
 import co.aikar.taskchain.TaskChainFactory;
 import co.paradaux.hdiscord.commands.DiscordCommand;
 import co.paradaux.hdiscord.core.Configuration;
+import co.paradaux.hdiscord.enums.Message;
 import co.paradaux.hdiscord.events.PlayerJoinEventHandler;
 import co.paradaux.hdiscord.events.PlayerLoginUpdateNotifyHandler;
 import co.paradaux.hdiscord.events.PlayerQuitEventHandler;
 import co.paradaux.hdiscord.hooks.PlaceholderAPIHook;
 import co.paradaux.hdiscord.hooks.PluginHook;
-import co.paradaux.hdiscord.utils.ConfigurationFileUtil;
-import co.paradaux.hdiscord.utils.LogUtil;
-import co.paradaux.hdiscord.utils.ServiceUtil;
+import co.paradaux.hdiscord.services.PluginMessageFormatter;
+import co.paradaux.hdiscord.utils.*;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.SetMultimap;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import ninja.egg82.events.BukkitEventSubscriber;
 import ninja.egg82.events.BukkitEvents;
 import ninja.egg82.service.ServiceLocator;
 import ninja.egg82.service.ServiceNotFoundException;
 import ninja.egg82.updater.SpigotUpdater;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -55,13 +58,20 @@ public class Main {
     private final Plugin plugin;
     private final boolean isBukkit;
 
+    private CommandIssuer consoleCommandIssuer = null;
+
     public Main(Plugin plugin) {
-        isBukkit = Bukkit.getName().equals("Bukkit") || Bukkit.getName().equals("CraftBukkit");
+        isBukkit = BukkitEnvironmentUtil.getEnvironment() == BukkitEnvironmentUtil.Environment.BUKKIT;
         this.plugin = plugin;
     }
 
     public void onLoad() {
-
+        if (BukkitEnvironmentUtil.getEnvironment() != BukkitEnvironmentUtil.Environment.PAPER) {
+            log(Level.INFO, ChatColor.AQUA + "====================================");
+            log(Level.INFO, ChatColor.YELLOW + "HiberniaDiscord runs better on Paper!");
+            log(Level.INFO, ChatColor.YELLOW + "https://whypaper.emc.gs/");
+            log(Level.INFO, ChatColor.AQUA + "====================================");
+        }
     }
 
     public void onEnable() {
@@ -69,17 +79,19 @@ public class Main {
         commandManager = new PaperCommandManager(plugin);
         commandManager.enableUnstableAPI("help");
 
+        consoleCommandIssuer = commandManager.getCommandIssuer(plugin.getServer().getConsoleSender());
+
+        loadLanguages();
         loadServices();
         loadCommands();
         loadEvents();
         loadHooks();
 
-        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabled");
-
-        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading()
-                        + ChatColor.YELLOW + "[" + ChatColor.AQUA + "Version " + ChatColor.WHITE + plugin.getDescription().getVersion() + ChatColor.YELLOW +  "] "
-                        + ChatColor.YELLOW + "[" + ChatColor.WHITE + commandManager.getRegisteredRootCommands().size() + ChatColor.GOLD + " Commands" + ChatColor.YELLOW +  "] "
-                        + ChatColor.YELLOW + "[" + ChatColor.WHITE + events.size() + ChatColor.BLUE + " Events" + ChatColor.YELLOW +  "]"
+        consoleCommandIssuer.sendInfo(Message.GENERAL__ENABLED);
+        consoleCommandIssuer.sendInfo(Message.GENERAL__LOAD,
+                "{version}", plugin.getDescription().getVersion(),
+                "{commands}", String.valueOf(commandManager.getRegisteredRootCommands().size()),
+                "{events}", String.valueOf(events.size())
         );
 
         workPool.submit(this::checkUpdate);
@@ -97,12 +109,40 @@ public class Main {
         unloadHooks();
         unloadServices();
 
-        plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.DARK_RED + "Disabled");
+        consoleCommandIssuer.sendInfo(Message.GENERAL__DISABLED);
+    }
+
+    private void loadLanguages() {
+        BukkitLocales locales = commandManager.getLocales();
+
+        try {
+            for (Locale locale : Locale.getAvailableLocales()) {
+                Optional<File> localeFile = LanguageFileUtil.getLanguage(plugin, locale);
+                if (localeFile.isPresent()) {
+                    commandManager.addSupportedLanguage(locale);
+                    locales.loadYamlLanguageFile(localeFile.get(), locale);
+                }
+            }
+        } catch (IOException | InvalidConfigurationException ex) {
+            logger.error(ex.getMessage(), ex);
+        }
+
+        locales.loadLanguages();
+        commandManager.usePerIssuerLocale(true, true);
+
+        commandManager.setFormat(MessageType.ERROR, new PluginMessageFormatter(commandManager, Message.GENERAL__HEADER));
+        commandManager.setFormat(MessageType.INFO, new PluginMessageFormatter(commandManager, Message.GENERAL__HEADER));
+        commandManager.setFormat(MessageType.ERROR, ChatColor.DARK_RED, ChatColor.YELLOW, ChatColor.AQUA, ChatColor.WHITE);
+        commandManager.setFormat(MessageType.INFO, ChatColor.WHITE, ChatColor.YELLOW, ChatColor.AQUA, ChatColor.GREEN, ChatColor.RED, ChatColor.GOLD, ChatColor.BLUE);
     }
 
     private void loadServices() {
         ConfigurationFileUtil.reloadConfig(plugin);
-        ServiceUtil.registerDiscord();
+        try {
+            ServiceUtil.registerDiscord();
+        } catch (MalformedURLException ex) {
+            consoleCommandIssuer.sendError(Message.ERROR__WEBHOOK_INVALID);
+        }
         ServiceLocator.register(new SpigotUpdater(plugin, 67795));
     }
 
@@ -124,7 +164,7 @@ public class Main {
 
     private void loadEvents() {
         events.add(BukkitEvents.subscribe(plugin, AsyncPlayerChatEvent.class, EventPriority.LOWEST).handler(e -> new AsyncPlayerChatHandler().accept(e)));
-        events.add(BukkitEvents.subscribe(plugin, PlayerLoginEvent.class, EventPriority.LOW).handler(e -> new PlayerLoginUpdateNotifyHandler(plugin).accept(e)));
+        events.add(BukkitEvents.subscribe(plugin, PlayerLoginEvent.class, EventPriority.LOW).handler(e -> new PlayerLoginUpdateNotifyHandler(plugin, commandManager).accept(e)));
         events.add(BukkitEvents.subscribe(plugin, PlayerJoinEvent.class, EventPriority.LOW).handler(e -> new PlayerJoinEventHandler().accept(e)));
         events.add(BukkitEvents.subscribe(plugin, PlayerQuitEvent.class, EventPriority.LOW).handler(e -> new PlayerQuitEventHandler().accept(e)));
     }
@@ -133,25 +173,28 @@ public class Main {
         PluginManager manager = plugin.getServer().getPluginManager();
 
         if (manager.getPlugin("PlaceholderAPI") != null) {
-            plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.GREEN + "Enabling support for PlaceholderAPI.");
+            consoleCommandIssuer.sendInfo(Message.GENERAL__HOOK_ENABLE, "{plugin}", "PlaceholderAPI");
             ServiceLocator.register(new PlaceholderAPIHook());
         } else {
-            plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.YELLOW + "PlaceholderAPI was not found. Skipping support for placeholders.");
+            consoleCommandIssuer.sendInfo(Message.GENERAL__HOOK_DISABLE, "{plugin}", "PlaceholderAPI");
         }
     }
 
     private void checkUpdate() {
-        Configuration config;
+        Optional<Configuration> config = ConfigUtil.getConfig();
+        if (!config.isPresent()) {
+            return;
+        }
+
         SpigotUpdater updater;
         try {
-            config = ServiceLocator.get(Configuration.class);
             updater = ServiceLocator.get(SpigotUpdater.class);
         } catch (InstantiationException | IllegalAccessException | ServiceNotFoundException ex) {
             logger.error(ex.getMessage(), ex);
             return;
         }
 
-        if (!config.getNode("update", "check").getBoolean(true)) {
+        if (!config.get().getNode("update", "check").getBoolean(true)) {
             return;
         }
 
@@ -161,7 +204,7 @@ public class Main {
             }
 
             try {
-                plugin.getServer().getConsoleSender().sendMessage(LogUtil.getHeading() + ChatColor.AQUA + " has an " + ChatColor.GREEN + "update" + ChatColor.AQUA + " available! New version: " + ChatColor.YELLOW + updater.getLatestVersion().get());
+                consoleCommandIssuer.sendInfo(Message.GENERAL__UPDATE, "{version}", updater.getLatestVersion().get());
             } catch (ExecutionException ex) {
                 logger.error(ex.getMessage(), ex);
             } catch (InterruptedException ex) {
@@ -188,5 +231,9 @@ public class Main {
 
     private void unloadServices() {
         ServiceUtil.unregisterDiscord();
+    }
+
+    private void log(Level level, String message) {
+        plugin.getServer().getLogger().log(level, (isBukkit) ? ChatColor.stripColor(message) : message);
     }
 }

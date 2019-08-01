@@ -2,6 +2,7 @@ package co.paradaux.hdiscord.commands;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.CommandHelp;
+import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.*;
 import co.aikar.taskchain.TaskChainFactory;
 import co.paradaux.hdiscord.commands.internal.ReloadCommand;
@@ -21,9 +22,9 @@ public class DiscordCommand extends BaseCommand {
 
     @Subcommand("reload")
     @CommandPermission("hdiscord.admin")
-    @Description("Reloads the plugin.")
-    public void onReload(CommandSender sender) {
-        new ReloadCommand(plugin, taskFactory.newChain(), sender).run();
+    @Description("{@@description.reload}")
+    public void onReload(CommandIssuer issuer) {
+        new ReloadCommand(plugin, taskFactory.newChain(), issuer).run();
     }
 
     @CatchUnknown @Default
