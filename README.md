@@ -1,6 +1,6 @@
-# HiberniaDiscord v2.0.0: Rewrite.
+# HiberniaDiscord v2.1.0: Events Update.
 
-Currently preparing for v2.0.1 which adds Join/leave messages as well as fixing some small bugs.
+Currently preparing for v2.1.1 which will further improve on our dependency injection methods as well as fix any bugs present in 2.1.0
 
 ## Installation
 
@@ -24,11 +24,32 @@ We're currently shipping w/ Maven. Feel free to build the source yourself, shoul
 
 Feel free to create a fork and submit a pull request, I'll get to it when I can (Which shouldn't be too long, I have nothing better to do with my time.)
 
+If you'd like to create an addon for HiberniaDiscord feel free to do so. I have made a public repository for v2.1.0 upwards. 
+```xml
+<repository>
+	<id>paradaux-repo</id>
+	<url>https://dev.hiberniamc.com/repository/paradaux/</url>
+</repository>
+```
+
+```xml
+<dependency>
+	<groupId>co.paradux</groupId>
+	<artifactId>HiberniaDiscord</artifactId>
+	<version>2.1.0</version>
+	<scope>provided</scope>
+</dependency>
+```
+
+
+
 ## Versioning
 
 We're following a very weak versioning system whereby
 
-1.0 - is the initial release
+2.1.0 - Adds Join/Leave webhook events as well as switches to dependency injection
+2.0.0 - Rewrite and Overhaul of the entire plugin. Brings maven support.
+1.0.0 - is the initial release
 X.01 - was a quickly deployed bugfix.
 X.1 - is a substantial feature addition
 X.0 - is a complete rewrite or finalisation of the plugin.
@@ -36,7 +57,7 @@ X.0 - is a complete rewrite or finalisation of the plugin.
 ## Authors
 
 * **Rían Errity** - *Initial concept and development - [ParadauxDev](https://paradaux.co)
-* **egg82** - *Guidence, Programming and expertise. - [Website](https://egg82.ninja)
+* **egg82** - *Guidance, Programming and expertise. - [Website](https://egg82.ninja)
 
 All those who contribute in any form will be acknowledged.
 
@@ -48,4 +69,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * Hats off to the entire Plugin Development Course on Udemy which got me interested in plugin development again.
 * Huge thanks to the very welcoming r/admincraft community who gave me a large amount of help following the initial release of the plugin
-* Thanks to egg82 of r/admincraft for extra consultation and answering my stupid questions.
